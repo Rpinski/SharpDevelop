@@ -104,5 +104,20 @@ namespace ICSharpCode.GitAddIn
 		{
 			Proc("log", fileName, callback);
 		}
+		
+		public static void Fetch(string fileName, Action callback)
+		{
+			Proc("fetch", fileName, callback);
+		}
+		
+		public static void Pull(string fileName, Action callback)
+		{
+			Proc("pull", fileName, callback);
+		}
+		
+		public static void Push(string fileName, Action callback)
+		{
+			Proc("push", fileName, callback);
+		}
 	}
 }

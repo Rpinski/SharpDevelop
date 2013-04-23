@@ -27,19 +27,35 @@
 		<Condition name = "IsUnderGitControl">
 			<MenuItem id = "GitSeparator" type = "Separator"/>
 			
-			<MenuItem id = "GitCommit"
-			          label = "Git ${res:AddIns.Subversion.Commit}..."
-			          icon  = "Svn.Commit"
-			          class = "ICSharpCode.GitAddIn.GitCommitCommand"/>
-			
-			<MenuItem id = "GitDiff"
-			          label = "Git ${res:AddIns.Subversion.Diff}..."
-			          icon  = "Svn.Diff"
-			          class = "ICSharpCode.GitAddIn.GitDiffCommand"/>
-		
-			<MenuItem id = "GitLog"
-			          label = "Git ${res:AddIns.Subversion.ShowLog}..."
-			          class = "ICSharpCode.GitAddIn.GitLogCommand"/>
+			<MenuItem id="GitSubMenu" type="Menu" label="Git">
+				<MenuItem id = "GitCommit"
+				          label = "${res:AddIns.Subversion.Commit}..."
+				          icon  = "Svn.Commit"
+				          class = "ICSharpCode.GitAddIn.GitCommitCommand"/>
+				
+				<MenuItem id = "GitDiff"
+				          label = "${res:AddIns.Subversion.Diff}..."
+				          icon  = "Svn.Diff"
+				          class = "ICSharpCode.GitAddIn.GitDiffCommand"/>
+				
+				<MenuItem id = "GitLog"
+				          label = "${res:AddIns.Subversion.ShowLog}..."
+				          class = "ICSharpCode.GitAddIn.GitLogCommand"/>
+				
+				<MenuItem id = "GitSubMenuSeparator1" type = "Separator"/>
+				
+				<MenuItem id = "GitFetch"
+				          label = "Fetch..."
+				          class = "ICSharpCode.GitAddIn.GitFetchCommand"/>
+				
+				<MenuItem id = "GitPull"
+				          label = "Pull..."
+				          class = "ICSharpCode.GitAddIn.GitPullCommand"/>
+				
+				<MenuItem id = "GitPush"
+				          label = "Push..."
+				          class = "ICSharpCode.GitAddIn.GitPushCommand"/>
+			</MenuItem>
 		</Condition>
 	</Path>
 	

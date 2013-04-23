@@ -101,4 +101,28 @@ namespace ICSharpCode.GitAddIn
 			GitGuiWrapper.Log(filename, callback);
 		}
 	}
+	
+	public class GitFetchCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.Fetch(filename, callback);
+		}
+	}
+	
+	public class GitPullCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.Pull(filename, callback);
+		}
+	}
+	
+	public class GitPushCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.Push(filename, callback);
+		}
+	}
 }
