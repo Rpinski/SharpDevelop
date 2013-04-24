@@ -102,6 +102,30 @@ namespace ICSharpCode.GitAddIn
 		}
 	}
 	
+	public class GitRevertCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.Revert(filename, callback);
+		}
+	}
+	
+	public class GitEditConflictsCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.EditConflicts(filename, callback);
+		}
+	}
+	
+	public class GitResolveCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.Resolve(filename, callback);
+		}
+	}
+	
 	public class GitFetchCommand : GitCommand
 	{
 		protected override void Run(string filename, Action callback)
@@ -123,6 +147,14 @@ namespace ICSharpCode.GitAddIn
 		protected override void Run(string filename, Action callback)
 		{
 			GitGuiWrapper.Push(filename, callback);
+		}
+	}
+	
+	public class GitRebaseCommand : GitCommand
+	{
+		protected override void Run(string filename, Action callback)
+		{
+			GitGuiWrapper.Rebase(filename, callback);
 		}
 	}
 }

@@ -104,6 +104,21 @@ namespace ICSharpCode.GitAddIn
 		{
 			Proc("log", fileName, callback);
 		}
+
+		public static void Revert(string fileName, Action callback)
+		{
+			Proc("revert", fileName, callback);
+		}
+		
+		public static void EditConflicts(string fileName, Action callback)
+		{
+			Proc("conflicteditor", fileName, callback);
+		}
+		
+		public static void Resolve(string fileName, Action callback)
+		{
+			Proc("resolve", fileName, callback);
+		}
 		
 		public static void Fetch(string fileName, Action callback)
 		{
@@ -118,6 +133,11 @@ namespace ICSharpCode.GitAddIn
 		public static void Push(string fileName, Action callback)
 		{
 			Proc("push", fileName, callback);
+		}
+		
+		public static void Rebase(string fileName, Action callback)
+		{
+			Proc("rebase", fileName, callback);
 		}
 	}
 }

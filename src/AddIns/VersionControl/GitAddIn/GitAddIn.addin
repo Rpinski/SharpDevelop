@@ -44,6 +44,20 @@
 				
 				<MenuItem id = "GitSubMenuSeparator1" type = "Separator"/>
 				
+				<MenuItem id = "GitRevert"
+				          label = "${res:AddIns.Subversion.Revert}..."
+				          class = "ICSharpCode.GitAddIn.GitRevertCommand"/>
+				
+				<MenuItem id = "GitEditConflicts"
+				          label = "${res:AddIns.Subversion.EditConflicts}..."
+				          class = "ICSharpCode.GitAddIn.GitEditConflictsCommand"/>
+				
+				<MenuItem id = "GitResolve"
+				          label = "Resolve..."
+				          class = "ICSharpCode.GitAddIn.GitResolveCommand"/>
+				
+				<MenuItem id = "GitSubMenuSeparator2" type = "Separator"/>
+				
 				<MenuItem id = "GitFetch"
 				          label = "Fetch..."
 				          class = "ICSharpCode.GitAddIn.GitFetchCommand"/>
@@ -55,6 +69,10 @@
 				<MenuItem id = "GitPush"
 				          label = "Push..."
 				          class = "ICSharpCode.GitAddIn.GitPushCommand"/>
+				
+				<MenuItem id = "GitRebase"
+				          label = "Rebase..."
+				          class = "ICSharpCode.GitAddIn.GitRebaseCommand"/>
 			</MenuItem>
 		</Condition>
 	</Path>
