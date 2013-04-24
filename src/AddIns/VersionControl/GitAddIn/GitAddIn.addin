@@ -92,4 +92,14 @@
 	<Path name = "/SharpDevelop/Pads/ProjectBrowser/ContextMenu/FileNode">
 		<Include id = "SubversionInclude" path = "/SharpDevelop/Pads/ProjectBrowser/ContextMenu/GitItem"/>
 	</Path>
+	
+	<Path name="/SharpDevelop/Workbench/Pads">
+		<Pad
+			id="GitConsole"
+			category="Tools"
+			title="Git Console"
+			icon="PadIcons.Output"
+			defaultPosition="Bottom, Hidden"
+			class="ICSharpCode.GitAddIn.GitConsolePad"/>
+	</Path>
 </AddIn>
