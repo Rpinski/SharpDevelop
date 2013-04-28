@@ -47,7 +47,7 @@ namespace ICSharpCode.GitAddIn
 					lock (outputQueue)
 					{
 						outputQueue.Enqueue(e.Data);
-						LoggingService.Warn("GitConsole: Output.");
+						LoggingService.WarnFormatted("GitConsole: Output: {0}", e.Data);
 					}
 					SD.MainThread.InvokeAsyncAndForget(ReadAll);
 				};
@@ -59,7 +59,6 @@ namespace ICSharpCode.GitAddIn
 //						gitProcess.CancelErrorRead();
 //						gitProcess.CancelOutputRead();
 //						isExecuting = false;
-						LoggingService.Warn("GitConsole: Exited.");
 					}
 					SD.MainThread.InvokeAsyncAndForget(GitExit);
 				};
@@ -72,7 +71,7 @@ namespace ICSharpCode.GitAddIn
 			{
 				isExecuting = true;
 				gitProcess.StartInfo.Arguments = commandLineArguments;
-				gitProcess.StartInfo.WorkingDirectory = @"C:\Andreas\projekte\SharpDevelop5_work";
+				gitProcess.StartInfo.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
 				gitProcess.Start();
 				gitProcess.BeginErrorReadLine();
 				gitProcess.BeginOutputReadLine();
@@ -84,7 +83,8 @@ namespace ICSharpCode.GitAddIn
 			gitProcess.CancelErrorRead();
 			gitProcess.CancelOutputRead();
 			isExecuting = false;
-			ReadAll();
+			LoggingService.Warn("GitConsole: Exited.");
+			AppendPrompt();
 		}
 		
 //		int expectedPrompts;
@@ -138,6 +138,7 @@ namespace ICSharpCode.GitAddIn
 			{
 				lock (outputQueue)
 				{
+					LoggingService.WarnFormatted("GitConsole: Prompt (isExecuting = {0})", isExecuting);
 					if (!isExecuting)
 					{
 						return "> git ";
