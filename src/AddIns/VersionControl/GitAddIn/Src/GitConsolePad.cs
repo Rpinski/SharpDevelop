@@ -3,7 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Input;
 
 using ICSharpCode.Core;
@@ -19,98 +21,169 @@ namespace ICSharpCode.GitAddIn
 	{
 		private Queue<string> outputQueue = new Queue<string>();
 		private bool isExecuting = false;
-		internal readonly Process gitProcess = null;
+//		internal readonly Process gitProcess = null;
+//		internal readonly ProcessRunner gitProcessRunner = null;
 		
 		public GitConsolePad()
 		{
+//			string gitExe = Git.FindGit();
+//			if (gitExe != null)
+//			{
+//				gitProcessRunner = new ProcessRunner();
+//				gitProcessRunner.CreationFlags = (ProcessCreationFlags) 0x00000008;
+//				gitProcessRunner.RedirectStandardOutput = true;
+//				gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
+//				gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
+//
+//				gitProcess = new Process();
+//				gitProcess.StartInfo.FileName = gitExe; // = @"E:\Andreas\projekte\SharpDevelop5_work\GitConsoleTest.exe";
+//				gitProcess.StartInfo.UseShellExecute = false;
+//				gitProcess.StartInfo.CreateNoWindow = true;
+//				gitProcess.StartInfo.RedirectStandardError = true;
+//				gitProcess.StartInfo.RedirectStandardInput = true;
+//				gitProcess.StartInfo.RedirectStandardOutput = true;
+//				gitProcess.EnableRaisingEvents = true;
+//				gitProcess.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e)
+//				{
+//					lock (outputQueue)
+//					{
+//						outputQueue.Enqueue(e.Data);
+//					}
+//					SD.MainThread.InvokeAsyncAndForget(ReadAll);
+//				};
+//				gitProcess.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e)
+//				{
+//					lock (outputQueue)
+//					{
+//						outputQueue.Enqueue(e.Data);
+//						LoggingService.WarnFormatted("GitConsole: Output: {0}", e.Data);
+//					}
+//					SD.MainThread.InvokeAsyncAndForget(ReadAll);
+//				};
+//				gitProcess.Exited += delegate(object sender, EventArgs e)
+//				{
+//					gitProcess.WaitForExit();
+//					lock (outputQueue)
+//					{
+			////						gitProcess.CancelErrorRead();
+			////						gitProcess.CancelOutputRead();
+			////						isExecuting = false;
+//					}
+//					SD.MainThread.InvokeAsyncAndForget(GitExit);
+//				};
+//			}
+		}
+		
+		void StartGit(string[] commandLineArguments)
+		{
+//			if (gitProcess != null)
+//			{
+//				isExecuting = true;
+//				gitProcess.StartInfo.Arguments = commandLineArguments;
+//				gitProcess.StartInfo.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
+//				gitProcess.Start();
+//				gitProcess.BeginErrorReadLine();
+//				gitProcess.BeginOutputReadLine();
+//			}
+			
 			string gitExe = Git.FindGit();
 			if (gitExe != null)
 			{
-				gitProcess = new Process();
-				gitProcess.StartInfo.FileName = Git.FindGit();
-				gitProcess.StartInfo.UseShellExecute = false;
-				gitProcess.StartInfo.CreateNoWindow = true;
-				gitProcess.StartInfo.RedirectStandardError = true;
-				gitProcess.StartInfo.RedirectStandardInput = true;
-				gitProcess.StartInfo.RedirectStandardOutput = true;
-				gitProcess.EnableRaisingEvents = true;
-				gitProcess.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e)
+				using (ProcessRunner gitProcessRunner = new ProcessRunner())
 				{
-					lock (outputQueue)
-					{
-						outputQueue.Enqueue(e.Data);
-					}
-					SD.MainThread.InvokeAsyncAndForget(ReadAll);
-				};
-				gitProcess.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e)
-				{
-					lock (outputQueue)
-					{
-						outputQueue.Enqueue(e.Data);
-						LoggingService.WarnFormatted("GitConsole: Output: {0}", e.Data);
-					}
-					SD.MainThread.InvokeAsyncAndForget(ReadAll);
-				};
-				gitProcess.Exited += delegate(object sender, EventArgs e)
-				{
-					gitProcess.WaitForExit();
-					lock (outputQueue)
-					{
-//						gitProcess.CancelErrorRead();
-//						gitProcess.CancelOutputRead();
-//						isExecuting = false;
-					}
-					SD.MainThread.InvokeAsyncAndForget(GitExit);
-				};
-			}
-		}
-		
-		void StartGit(string commandLineArguments)
-		{
-			if (gitProcess != null)
-			{
-				isExecuting = true;
-				gitProcess.StartInfo.Arguments = commandLineArguments;
-				gitProcess.StartInfo.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
-				gitProcess.Start();
-				gitProcess.BeginErrorReadLine();
-				gitProcess.BeginOutputReadLine();
+//					gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200);
+					gitProcessRunner.RedirectStandardError = true;
+					gitProcessRunner.RedirectStandardOutput = true;
+					gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
+					gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
+					gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
+					gitProcessRunner.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
+					gitProcessRunner.Start(Git.FindGit(), commandLineArguments);
+					
+					//ReadOutputAsync(gitProcessRunner);
+					ReadOutput(gitProcessRunner);
+				}
 			}
 		}
 		
 		private void GitExit()
 		{
-			gitProcess.CancelErrorRead();
-			gitProcess.CancelOutputRead();
-			isExecuting = false;
-			LoggingService.Warn("GitConsole: Exited.");
-			AppendPrompt();
+//			gitProcess.CancelErrorRead();
+//			gitProcess.CancelOutputRead();
+//			isExecuting = false;
+//			LoggingService.Warn("GitConsole: Exited.");
+//			AppendPrompt();
+		}
+		
+		private async Task ReadOutputAsync(ProcessRunner process)
+		{
+			char[] buffer = new char[4096];
+			StringBuilder builder = new StringBuilder();
+
+			using (StreamReader reader = process.OpenStandardOutputReader())
+			{
+				while (!process.HasExited)
+				{
+					int charsRead = 0;
+					while ((charsRead = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+					{
+						// Output
+						builder.Append(buffer);
+//						Console.Write(builder.ToString(0, charsRead));
+						int offset = 0;
+						InsertBeforePrompt(builder.ToString(offset, charsRead - offset));
+						builder.Clear();
+					}
+				}
+			}
+		}
+		
+		private void ReadOutput(ProcessRunner process)
+		{
+			char[] buffer = new char[4096];
+			StringBuilder builder = new StringBuilder();
+
+			using (StreamReader reader = process.OpenStandardOutputReader())
+			{
+//				while (!process.HasExited)
+//				{
+					int totalCharsRead = 0;
+					int charsRead = 0;
+					while ((charsRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+					{
+						// Output
+						builder.Append(buffer);
+						totalCharsRead += charsRead;
+					}
+					AppendLine(builder.ToString(0, totalCharsRead));
+//				}
+			}
 		}
 		
 //		int expectedPrompts;
-		
-		private void ReadAll()
-		{
-			StringBuilder b = new StringBuilder();
-			lock (outputQueue)
-			{
-				while (outputQueue.Count > 0)
-				{
-					b.AppendLine(outputQueue.Dequeue());
-				}
-			}
-			int offset = 0;
-//			// ignore prompts inserted by fsi.exe (we only see them too late as we're reading line per line)
-//			for (int i = 0; i < expectedPrompts; i++)
+//
+//		private void ReadAll()
+//		{
+//			StringBuilder b = new StringBuilder();
+//			lock (outputQueue)
 //			{
-//				if (offset + 1 < b.Length && b[offset] == '>' && b[offset + 1] == ' ')
-//					offset += 2;
-//				else
-//					break;
+//				while (outputQueue.Count > 0)
+//				{
+//					b.AppendLine(outputQueue.Dequeue());
+//				}
 //			}
-//			expectedPrompts = 0;
-			InsertBeforePrompt(b.ToString(offset, b.Length - offset));
-		}
+//			int offset = 0;
+		////			// ignore prompts inserted by fsi.exe (we only see them too late as we're reading line per line)
+		////			for (int i = 0; i < expectedPrompts; i++)
+		////			{
+		////				if (offset + 1 < b.Length && b[offset] == '>' && b[offset + 1] == ' ')
+		////					offset += 2;
+		////				else
+		////					break;
+		////			}
+		////			expectedPrompts = 0;
+//			InsertBeforePrompt(b.ToString(offset, b.Length - offset));
+//		}
 		
 //		protected virtual bool HandleInput(Key key)
 //		{
@@ -157,14 +230,15 @@ namespace ICSharpCode.GitAddIn
 			{
 				if (isExecuting)
 				{
-					if (gitProcess != null)
-					{
-						gitProcess.StandardInput.WriteLine(command);
-					}
+//					if (gitProcess != null)
+//					{
+//						gitProcess.StandardInput.WriteLine(command);
+//					}
 				}
 				else
 				{
-					StartGit(command);
+					string[] arguments = command.Split(' ');
+					StartGit(arguments);
 				}
 			}
 			return true;
