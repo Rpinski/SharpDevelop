@@ -4,13 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-
 using ICSharpCode.Core;
 using ICSharpCode.SharpDevelop;
 using ICSharpCode.SharpDevelop.Gui;
+using ICSharpCode.SharpDevelop.Project;
 
 namespace ICSharpCode.GitAddIn
 {
@@ -91,17 +92,29 @@ namespace ICSharpCode.GitAddIn
 			{
 				using (ProcessRunner gitProcessRunner = new ProcessRunner())
 				{
-//					gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200);
+					gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200);
 					gitProcessRunner.RedirectStandardError = true;
 					gitProcessRunner.RedirectStandardOutput = true;
 					gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
 					gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
 					gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
-					gitProcessRunner.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
+					gitProcessRunner.EnvironmentVariables.Add("SSH_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
+					gitProcessRunner.EnvironmentVariables.Add("GIT_SSH", @"C:\Program Files (x86)\Git\bin\ssh.exe");
+					var homeEnvDirectory = Environment.GetEnvironmentVariable("HOME");
+					if (!gitProcessRunner.EnvironmentVariables.ContainsKey("HOME"))
+					{
+						string homeDir =
+							Path.Combine(Environment.GetEnvironmentVariable("HOMEDRIVE"), Environment.GetEnvironmentVariable("HOMEPATH"));
+						gitProcessRunner.EnvironmentVariables.Add("HOME", homeDir);
+					}
+					gitProcessRunner.WorkingDirectory = @"C:\Andreas\projekte\SharpDevelop5_work";
 					gitProcessRunner.Start(Git.FindGit(), commandLineArguments);
 					
-					//ReadOutputAsync(gitProcessRunner);
-					ReadOutput(gitProcessRunner);
+					isExecuting = true;
+					ReadOutputAsync(gitProcessRunner);
+					gitProcessRunner.WaitForExitAsync();
+					isExecuting = false;
+//					ReadOutput(gitProcessRunner);
 				}
 			}
 		}
@@ -117,45 +130,81 @@ namespace ICSharpCode.GitAddIn
 		
 		private async Task ReadOutputAsync(ProcessRunner process)
 		{
-			char[] buffer = new char[4096];
-			StringBuilder builder = new StringBuilder();
+//			char[] buffer = new char[4096];
+//			StringBuilder builder = new StringBuilder();
+//
+//			using (StreamReader reader = process.OpenStandardOutputReader())
+//			{
+//				do
+//				{
+//					int charsRead = 0;
+//					while ((charsRead = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+//					{
+//						// Output
+//						builder.Append(buffer);
+////						Console.Write(builder.ToString(0, charsRead));
+//						int offset = 0;
+//						InsertBeforePrompt(builder.ToString(offset, charsRead - offset));
+////						Append(builder.ToString(0, charsRead - offset));
+//						builder.Clear();
+//					}
+//				} while (!process.HasExited);
+//			}
+			
+//			AppendLine("");
+//			AppendPrompt();
 
+			char[] buffer = new char[4096];
+			StringBuilder outputBuilder = new StringBuilder();
+			StringBuilder tempBuilder = new StringBuilder();
+
+			AppendLine("");
+			
 			using (StreamReader reader = process.OpenStandardOutputReader())
 			{
-				while (!process.HasExited)
+//				while (!process.HasExited)
+//				{
+				int totalCharsRead = 0;
+				int charsRead = 0;
+				while ((charsRead = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
 				{
-					int charsRead = 0;
-					while ((charsRead = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
-					{
-						// Output
-						builder.Append(buffer);
-//						Console.Write(builder.ToString(0, charsRead));
-						int offset = 0;
-						InsertBeforePrompt(builder.ToString(offset, charsRead - offset));
-						builder.Clear();
-					}
+					// Output
+					string readString = new String(buffer);
+					readString = readString.Substring(0, charsRead);
+					InsertBeforePrompt(readString);
+//					totalCharsRead += charsRead;
+//					builder.Clear();
 				}
+//				string output = builder.ToString(0, totalCharsRead);
+				
+//				}
 			}
 		}
 		
 		private void ReadOutput(ProcessRunner process)
 		{
 			char[] buffer = new char[4096];
-			StringBuilder builder = new StringBuilder();
+			StringBuilder outputBuilder = new StringBuilder();
+			StringBuilder tempBuilder = new StringBuilder();
 
+			AppendLine("");
+			
 			using (StreamReader reader = process.OpenStandardOutputReader())
 			{
 //				while (!process.HasExited)
 //				{
-					int totalCharsRead = 0;
-					int charsRead = 0;
-					while ((charsRead = reader.Read(buffer, 0, buffer.Length)) > 0)
-					{
-						// Output
-						builder.Append(buffer);
-						totalCharsRead += charsRead;
-					}
-					AppendLine(builder.ToString(0, totalCharsRead));
+				int totalCharsRead = 0;
+				int charsRead = 0;
+				while ((charsRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+				{
+					// Output
+					string readString = new String(buffer);
+					outputBuilder.Append(readString.Substring(0, charsRead));
+//					totalCharsRead += charsRead;
+//					builder.Clear();
+				}
+//				string output = builder.ToString(0, totalCharsRead);
+				AppendLine(outputBuilder.ToString());
 //				}
 			}
 		}
@@ -211,7 +260,7 @@ namespace ICSharpCode.GitAddIn
 			{
 				lock (outputQueue)
 				{
-					LoggingService.WarnFormatted("GitConsole: Prompt (isExecuting = {0})", isExecuting);
+//					LoggingService.WarnFormatted("GitConsole: Prompt (isExecuting = {0})", isExecuting);
 					if (!isExecuting)
 					{
 						return "> git ";
