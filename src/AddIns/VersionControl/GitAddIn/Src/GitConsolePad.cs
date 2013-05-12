@@ -96,7 +96,7 @@ namespace ICSharpCode.GitAddIn
 			if (gitExe != null)
 			{
 				gitProcessRunner = new ProcessRunner();
-				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200);
+				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200 | 0x08000000);
 				gitProcessRunner.RedirectStandardError = true;
 				gitProcessRunner.RedirectStandardOutput = true;
 				gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
@@ -104,14 +104,21 @@ namespace ICSharpCode.GitAddIn
 				gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
 				gitProcessRunner.EnvironmentVariables.Add("SSH_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
 				gitProcessRunner.EnvironmentVariables.Add("GIT_SSH", @"C:\Program Files (x86)\Git\bin\ssh.exe");
-				var homeEnvDirectory = Environment.GetEnvironmentVariable("HOME");
 				if (!gitProcessRunner.EnvironmentVariables.ContainsKey("HOME"))
 				{
-					string homeDir =
-						Path.Combine(Environment.GetEnvironmentVariable("HOMEDRIVE"), Environment.GetEnvironmentVariable("HOMEPATH"));
-					gitProcessRunner.EnvironmentVariables.Add("HOME", homeDir);
+					string homeDrive = Environment.GetEnvironmentVariable("HOMEDRIVE");
+					if (!homeDrive.EndsWith("\\") && !homeDrive.EndsWith("/"))
+					{
+						homeDrive += "\\";
+					}
+					string homePath = Environment.GetEnvironmentVariable("HOMEPATH");
+					if (homePath.StartsWith("\\") || homePath.StartsWith("/"))
+					{
+						homePath = homePath.Substring(1);
+					}
+					gitProcessRunner.EnvironmentVariables.Add("HOME", Path.Combine(homeDrive, homePath));
 				}
-				gitProcessRunner.WorkingDirectory = @"C:\Andreas\projekte\SharpDevelop5_work";
+				gitProcessRunner.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
 				gitProcessRunner.Start(Git.FindGit(), commandLineArguments);
 				gitOutputStreamReader = gitProcessRunner.OpenStandardOutputReader();
 				
@@ -126,11 +133,18 @@ namespace ICSharpCode.GitAddIn
 		
 		private void GitExit()
 		{
-//			gitProcess.CancelErrorRead();
-//			gitProcess.CancelOutputRead();
-//			isExecuting = false;
-//			LoggingService.Warn("GitConsole: Exited.");
-//			AppendPrompt();
+//			lock (outputQueue)
+//			{
+			isExecuting = false;
+//			}
+			
+			// Free resources
+			gitOutputStreamReader.Dispose();
+			gitOutputStreamReader = null;
+			gitProcessRunner.Dispose();
+			gitProcessRunner = null;
+			
+			AppendPrompt();
 		}
 		
 		private async Task ReadOutputAsync(ProcessRunner process)
@@ -188,33 +202,31 @@ namespace ICSharpCode.GitAddIn
 		
 		private void ReadFinishCallback(Task<int> task)
 		{
-			if (task.Result > 0)
+			try
 			{
-				string readString = new String(buffer);
-				lock (outputQueue)
-				{
-					outputQueue.Enqueue(readString.Substring(0, task.Result));
-				}
-				SD.MainThread.InvokeAsyncAndForget(ReadAll);
+				LoggingService.WarnFormatted("ReadFinishCallback: hasExited = {0}", gitProcessRunner.HasExited);
 				
-				StartAsyncRead();
+				if (task.Result > 0)
+				{
+					string readString = new String(buffer);
+					lock (outputQueue)
+					{
+						outputQueue.Enqueue(readString.Substring(0, task.Result));
+					}
+					SD.MainThread.InvokeAsyncAndForget(ReadAll);
+					
+					StartAsyncRead();
+				}
+				else
+				{
+					// Finished
+					Task exitTask = gitProcessRunner.WaitForExitAsync();
+					SD.MainThread.InvokeAsyncAndForget(GitExit);
+				}
 			}
-			else
+			catch (Exception ex)
 			{
-				// Finished
-				Task exitTask = gitProcessRunner.WaitForExitAsync();
-				lock (outputQueue)
-				{
-					isExecuting = false;
-				}
-				
-				// Free resources
-				gitOutputStreamReader.Dispose();
-				gitOutputStreamReader = null;
-				gitProcessRunner.Dispose();
-				gitProcessRunner = null;
-				
-				AppendPrompt();
+				LoggingService.Error("Git ReadCallback failure", ex);
 			}
 		}
 		
@@ -225,10 +237,10 @@ namespace ICSharpCode.GitAddIn
 		
 		private void ReadOutput()
 		{
-			lock (outputQueue)
-			{
-				isExecuting = true;
-			}
+//			lock (outputQueue)
+//			{
+			isExecuting = true;
+//			}
 			
 			StartAsyncRead();
 			
