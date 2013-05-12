@@ -21,12 +21,17 @@ namespace ICSharpCode.GitAddIn
 	public class GitConsolePad : AbstractConsolePad
 	{
 		private Queue<string> outputQueue = new Queue<string>();
+		char[] buffer;
 		private bool isExecuting = false;
+		private ProcessRunner gitProcessRunner;
+		private StreamReader gitOutputStreamReader;
 //		internal readonly Process gitProcess = null;
 //		internal readonly ProcessRunner gitProcessRunner = null;
 		
 		public GitConsolePad()
 		{
+			buffer = new char[4096];
+			
 //			string gitExe = Git.FindGit();
 //			if (gitExe != null)
 //			{
@@ -90,32 +95,32 @@ namespace ICSharpCode.GitAddIn
 			string gitExe = Git.FindGit();
 			if (gitExe != null)
 			{
-				using (ProcessRunner gitProcessRunner = new ProcessRunner())
+				gitProcessRunner = new ProcessRunner();
+				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200);
+				gitProcessRunner.RedirectStandardError = true;
+				gitProcessRunner.RedirectStandardOutput = true;
+				gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
+				gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
+				gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
+				gitProcessRunner.EnvironmentVariables.Add("SSH_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
+				gitProcessRunner.EnvironmentVariables.Add("GIT_SSH", @"C:\Program Files (x86)\Git\bin\ssh.exe");
+				var homeEnvDirectory = Environment.GetEnvironmentVariable("HOME");
+				if (!gitProcessRunner.EnvironmentVariables.ContainsKey("HOME"))
 				{
-					gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200);
-					gitProcessRunner.RedirectStandardError = true;
-					gitProcessRunner.RedirectStandardOutput = true;
-					gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
-					gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
-					gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
-					gitProcessRunner.EnvironmentVariables.Add("SSH_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
-					gitProcessRunner.EnvironmentVariables.Add("GIT_SSH", @"C:\Program Files (x86)\Git\bin\ssh.exe");
-					var homeEnvDirectory = Environment.GetEnvironmentVariable("HOME");
-					if (!gitProcessRunner.EnvironmentVariables.ContainsKey("HOME"))
-					{
-						string homeDir =
-							Path.Combine(Environment.GetEnvironmentVariable("HOMEDRIVE"), Environment.GetEnvironmentVariable("HOMEPATH"));
-						gitProcessRunner.EnvironmentVariables.Add("HOME", homeDir);
-					}
-					gitProcessRunner.WorkingDirectory = @"C:\Andreas\projekte\SharpDevelop5_work";
-					gitProcessRunner.Start(Git.FindGit(), commandLineArguments);
-					
-					isExecuting = true;
-					ReadOutputAsync(gitProcessRunner);
-					gitProcessRunner.WaitForExitAsync();
-					isExecuting = false;
-//					ReadOutput(gitProcessRunner);
+					string homeDir =
+						Path.Combine(Environment.GetEnvironmentVariable("HOMEDRIVE"), Environment.GetEnvironmentVariable("HOMEPATH"));
+					gitProcessRunner.EnvironmentVariables.Add("HOME", homeDir);
 				}
+				gitProcessRunner.WorkingDirectory = @"C:\Andreas\projekte\SharpDevelop5_work";
+				gitProcessRunner.Start(Git.FindGit(), commandLineArguments);
+				gitOutputStreamReader = gitProcessRunner.OpenStandardOutputReader();
+				
+//					Action<ProcessRunner> readOutputMethod = ReadOutput;
+//					AsyncCallback asyncCallback = delegate(IAsyncResult result) {};
+//					readOutputMethod.BeginInvoke(gitProcessRunner, asyncCallback, null);
+				ReadOutput();
+//					ReadOutputAsync(gitProcessRunner);
+//					gitProcessRunner.WaitForExitAsync();
 			}
 		}
 		
@@ -142,10 +147,10 @@ namespace ICSharpCode.GitAddIn
 //					{
 //						// Output
 //						builder.Append(buffer);
-////						Console.Write(builder.ToString(0, charsRead));
+			////						Console.Write(builder.ToString(0, charsRead));
 //						int offset = 0;
 //						InsertBeforePrompt(builder.ToString(offset, charsRead - offset));
-////						Append(builder.ToString(0, charsRead - offset));
+			////						Append(builder.ToString(0, charsRead - offset));
 //						builder.Clear();
 //					}
 //				} while (!process.HasExited);
@@ -181,58 +186,108 @@ namespace ICSharpCode.GitAddIn
 			}
 		}
 		
-		private void ReadOutput(ProcessRunner process)
+		private void ReadFinishCallback(Task<int> task)
 		{
-			char[] buffer = new char[4096];
-			StringBuilder outputBuilder = new StringBuilder();
-			StringBuilder tempBuilder = new StringBuilder();
-
-			AppendLine("");
-			
-			using (StreamReader reader = process.OpenStandardOutputReader())
+			if (task.Result > 0)
 			{
+				string readString = new String(buffer);
+				lock (outputQueue)
+				{
+					outputQueue.Enqueue(readString.Substring(0, task.Result));
+				}
+				SD.MainThread.InvokeAsyncAndForget(ReadAll);
+				
+				StartAsyncRead();
+			}
+			else
+			{
+				// Finished
+				Task exitTask = gitProcessRunner.WaitForExitAsync();
+				lock (outputQueue)
+				{
+					isExecuting = false;
+				}
+				
+				// Free resources
+				gitOutputStreamReader.Dispose();
+				gitOutputStreamReader = null;
+				gitProcessRunner.Dispose();
+				gitProcessRunner = null;
+				
+				AppendPrompt();
+			}
+		}
+		
+		private void StartAsyncRead()
+		{
+			gitOutputStreamReader.ReadAsync(buffer, 0, buffer.Length).ContinueWith(ReadFinishCallback);
+		}
+		
+		private void ReadOutput()
+		{
+			lock (outputQueue)
+			{
+				isExecuting = true;
+			}
+			
+			StartAsyncRead();
+			
+//		StringBuilder outputBuilder = new StringBuilder();
+//		StringBuilder tempBuilder = new StringBuilder();
+
+//			AppendLine("");
+			
+//		using (StreamReader reader = process.OpenStandardOutputReader())
+//		{
+//			StartAsyncRead(reader);
+			
 //				while (!process.HasExited)
 //				{
-				int totalCharsRead = 0;
-				int charsRead = 0;
-				while ((charsRead = reader.Read(buffer, 0, buffer.Length)) > 0)
-				{
-					// Output
-					string readString = new String(buffer);
-					outputBuilder.Append(readString.Substring(0, charsRead));
-//					totalCharsRead += charsRead;
-//					builder.Clear();
-				}
-//				string output = builder.ToString(0, totalCharsRead);
-				AppendLine(outputBuilder.ToString());
+//				int totalCharsRead = 0;
+//				int charsRead = 0;
+//				while ((charsRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+//				{
+//					// Output
+//					string readString = new String(buffer);
+			////						outputBuilder.Append(readString.Substring(0, charsRead));
+//					lock (outputQueue)
+//					{
+//						outputQueue.Enqueue(readString.Substring(0, charsRead));
+//					}
+//					SD.MainThread.InvokeAsyncAndForget(ReadAll);
+			////					totalCharsRead += charsRead;
+			////					builder.Clear();
 //				}
-			}
+//				string output = builder.ToString(0, totalCharsRead);
+//				AppendLine(outputBuilder.ToString());
+//				}
+//		}
 		}
 		
 //		int expectedPrompts;
 //
-//		private void ReadAll()
-//		{
-//			StringBuilder b = new StringBuilder();
-//			lock (outputQueue)
-//			{
-//				while (outputQueue.Count > 0)
-//				{
-//					b.AppendLine(outputQueue.Dequeue());
-//				}
-//			}
-//			int offset = 0;
-		////			// ignore prompts inserted by fsi.exe (we only see them too late as we're reading line per line)
-		////			for (int i = 0; i < expectedPrompts; i++)
-		////			{
-		////				if (offset + 1 < b.Length && b[offset] == '>' && b[offset + 1] == ' ')
-		////					offset += 2;
-		////				else
-		////					break;
-		////			}
-		////			expectedPrompts = 0;
-//			InsertBeforePrompt(b.ToString(offset, b.Length - offset));
-//		}
+		private void ReadAll()
+		{
+			StringBuilder b = new StringBuilder();
+			lock (outputQueue)
+			{
+				while (outputQueue.Count > 0)
+				{
+					b.AppendLine(outputQueue.Dequeue());
+				}
+			}
+			int offset = 0;
+			//			// ignore prompts inserted by fsi.exe (we only see them too late as we're reading line per line)
+			//			for (int i = 0; i < expectedPrompts; i++)
+			//			{
+			//				if (offset + 1 < b.Length && b[offset] == '>' && b[offset + 1] == ' ')
+			//					offset += 2;
+			//				else
+			//					break;
+			//			}
+			//			expectedPrompts = 0;
+			InsertBeforePrompt(b.ToString(offset, b.Length - offset));
+		}
 		
 //		protected virtual bool HandleInput(Key key)
 //		{
@@ -277,12 +332,14 @@ namespace ICSharpCode.GitAddIn
 		{
 			lock (outputQueue)
 			{
+				LoggingService.WarnFormatted("GitConsole: AcceptCommand (isExecuting = {0})", isExecuting);
 				if (isExecuting)
 				{
 //					if (gitProcess != null)
 //					{
 //						gitProcess.StandardInput.WriteLine(command);
 //					}
+					return false;
 				}
 				else
 				{
