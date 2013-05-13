@@ -99,11 +99,12 @@ namespace ICSharpCode.GitAddIn
 				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200 | 0x08000000);
 				gitProcessRunner.RedirectStandardError = true;
 				gitProcessRunner.RedirectStandardOutput = true;
-				gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
+//				gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
 				gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
 				gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
 				gitProcessRunner.EnvironmentVariables.Add("SSH_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
 				gitProcessRunner.EnvironmentVariables.Add("GIT_SSH", @"C:\Program Files (x86)\Git\bin\ssh.exe");
+				gitProcessRunner.EnvironmentVariables.Add("TERM", "dumb");
 				if (!gitProcessRunner.EnvironmentVariables.ContainsKey("HOME"))
 				{
 					string homeDrive = Environment.GetEnvironmentVariable("HOMEDRIVE");
@@ -118,8 +119,10 @@ namespace ICSharpCode.GitAddIn
 					}
 					gitProcessRunner.EnvironmentVariables.Add("HOME", Path.Combine(homeDrive, homePath));
 				}
+				gitProcessRunner.EnvironmentVariables["PATH"] = gitProcessRunner.EnvironmentVariables["PATH"] + @";C:\Program Files (x86)\Git\bin";
 				gitProcessRunner.WorkingDirectory = @"E:\Andreas\projekte\SharpDevelop5_work";
 				gitProcessRunner.Start(Git.FindGit(), commandLineArguments);
+//				gitProcessRunner.Start(@"C:\Users\WheizWork\Documents\Visual Studio 2012\Projects\GitConsoleTest\GitConsoleTest\bin\Debug\GitConsoleTest.exe", commandLineArguments);
 				gitOutputStreamReader = gitProcessRunner.OpenStandardOutputReader();
 				
 //					Action<ProcessRunner> readOutputMethod = ReadOutput;
