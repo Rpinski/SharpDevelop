@@ -96,15 +96,16 @@ namespace ICSharpCode.GitAddIn
 			if (gitExe != null)
 			{
 				gitProcessRunner = new ProcessRunner();
-				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200 | 0x08000000);
+//				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000008 | 0x00000200 | 0x08000000);
+				gitProcessRunner.CreationFlags |= (ProcessCreationFlags) (0x00000200 | 0x08000000);
 				gitProcessRunner.RedirectStandardError = true;
 				gitProcessRunner.RedirectStandardOutput = true;
-//				gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
+				gitProcessRunner.RedirectStandardOutputAndErrorToSingleStream = true;
 				gitProcessRunner.EnvironmentVariables.Add("DISPLAY", @":9999");
 				gitProcessRunner.EnvironmentVariables.Add("GIT_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
 				gitProcessRunner.EnvironmentVariables.Add("SSH_ASKPASS", @"C:\Program Files\TortoiseGit\bin\SshAskPass.exe");
 				gitProcessRunner.EnvironmentVariables.Add("GIT_SSH", @"C:\Program Files (x86)\Git\bin\ssh.exe");
-				gitProcessRunner.EnvironmentVariables.Add("TERM", "dumb");
+//				gitProcessRunner.EnvironmentVariables.Add("TERM", "dumb");
 				if (!gitProcessRunner.EnvironmentVariables.ContainsKey("HOME"))
 				{
 					string homeDrive = Environment.GetEnvironmentVariable("HOMEDRIVE");
@@ -128,6 +129,13 @@ namespace ICSharpCode.GitAddIn
 //					Action<ProcessRunner> readOutputMethod = ReadOutput;
 //					AsyncCallback asyncCallback = delegate(IAsyncResult result) {};
 //					readOutputMethod.BeginInvoke(gitProcessRunner, asyncCallback, null);
+				
+				StringBuilder debugEnv = new StringBuilder();
+				foreach (var envvar in gitProcessRunner.EnvironmentVariables)
+				{
+					debugEnv.AppendLine(envvar.Key + " = " + envvar.Value);
+				}
+				
 				ReadOutput();
 //					ReadOutputAsync(gitProcessRunner);
 //					gitProcessRunner.WaitForExitAsync();
